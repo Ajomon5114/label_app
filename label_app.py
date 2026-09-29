@@ -2281,24 +2281,34 @@ class LabelApp(ctk.CTk):
             self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
         )
 
-        # Enforce a dynamic width for the preview so it doesn't squash the form on laptops
+        # Enforce a dynamic size for the preview so it fits both width and height
         app_w = self.winfo_width()
-        if app_w < 100:
-            app_w = self.winfo_screenwidth() * 0.85
-            
-        # The form pane takes ~350, sidebar ~220 (Total ~570)
-        # We give the preview pane the remaining space, minus some padding
-        available_w = app_w - 650
+        app_h = self.winfo_height()
         
-        if available_w > 1100:
-            constant_w = 1100
-        elif available_w < 450:
-            constant_w = 450
-        else:
-            constant_w = int(available_w)
+        if app_w < 100 or app_h < 100:
+            app_w = self.winfo_screenwidth() * 0.85
+            app_h = self.winfo_screenheight() * 0.85
+            
+        # Form pane + sidebar takes ~570px width
+        available_w = app_w - 620
+        # Toolbar + padding takes ~180px height
+        available_h = app_h - 180
+        
+        if available_w < 400: available_w = 400
+        if available_h < 300: available_h = 300
 
         img_ratio = pil_img.width / pil_img.height
-        new_w = constant_w
+        
+        # Calculate maximum width that satisfies the height constraint
+        max_w_for_h = available_h * img_ratio
+        
+        # Use the smallest width to ensure it fits in both dimensions
+        constant_w = min(available_w, max_w_for_h)
+        
+        if constant_w > 1100:
+            constant_w = 1100
+
+        new_w = int(constant_w)
         new_h = int(constant_w / img_ratio)
 
         ctk_img = ctk.CTkImage(
