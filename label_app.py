@@ -53,8 +53,8 @@ NETWORK_DIR = BASE_DIR
 FTP_HOST = ""
 FTP_USER = ""
 FTP_PASS = ""
-FTP_UPLOAD_DIR = "/public_html/documents/"
-FTP_PUBLIC_URL = "https://www.biomedingredients.com/documents/"
+FTP_UPLOAD_DIR = "/public_html/assets/docs/"
+FTP_PUBLIC_URL = "https://www.biomedingredients.com/assets/docs/"
 if os.path.exists(CONFIG_PATH):
     try:
         with open(CONFIG_PATH, "r") as f:
