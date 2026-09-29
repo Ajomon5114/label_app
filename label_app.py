@@ -804,15 +804,6 @@ class LabelApp(ctk.CTk):
         self._init_db()
         self._build_ui()
         self._on_change_debounced()
-        
-        # Bind resize event to dynamically scale the preview image
-        self.bind("<Configure>", self._on_window_resize)
-        
-    def _on_window_resize(self, event):
-        if event.widget == self:
-            if self._resize_after_id:
-                self.after_cancel(self._resize_after_id)
-            self._resize_after_id = self.after(100, self._resize_preview_image)
 
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=0)
@@ -1405,14 +1396,16 @@ class LabelApp(ctk.CTk):
         self._build_form()
 
         # PREVIEW PANE
-        preview_pane = ctk.CTkFrame(main_area, corner_radius=0, fg_color="#181818")
-        preview_pane.grid(row=0, column=2, sticky="nsew")
-        preview_pane.grid_propagate(False)
-        preview_pane.grid_columnconfigure(0, weight=1)
-        preview_pane.grid_rowconfigure(1, weight=1)
+        self.preview_pane = ctk.CTkFrame(main_area, corner_radius=0, fg_color="#181818")
+        self.preview_pane.grid(row=0, column=2, sticky="nsew")
+        self.preview_pane.grid_propagate(False)
+        self.preview_pane.grid_columnconfigure(0, weight=1)
+        self.preview_pane.grid_rowconfigure(1, weight=1)
+        
+        self.preview_pane.bind("<Configure>", self._on_preview_pane_resize)
 
         # Top Toolbar
-        top_toolbar = ctk.CTkFrame(preview_pane, fg_color="transparent")
+        top_toolbar = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
         top_toolbar.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
 
         # Grid View Button (Export Dialog)
@@ -1449,8 +1442,8 @@ class LabelApp(ctk.CTk):
         filter_btn.pack(side="right", padx=(0, 10))
 
         # Center Wrapper
-        center_wrapper = ctk.CTkFrame(preview_pane, fg_color="transparent")
-        center_wrapper.grid(row=1, column=0, sticky="")
+        center_wrapper = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
+        center_wrapper.grid(row=1, column=0, sticky="nsew")
 
         # Preview Container
         preview_container = ctk.CTkFrame(
@@ -2290,39 +2283,43 @@ class LabelApp(ctk.CTk):
         self._current_pil_img = pil_img
         self._resize_preview_image()
 
+    def _on_preview_pane_resize(self, event):
+        if self._resize_after_id:
+            self.after_cancel(self._resize_after_id)
+        self._resize_after_id = self.after(100, self._resize_preview_image)
+
     def _resize_preview_image(self, event=None):
         if not hasattr(self, "_current_pil_img") or not self._current_pil_img:
             return
             
         scaling = self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
 
-        # winfo_width returns physical pixels on high-DPI Windows, but CTkImage expects logical pixels!
-        # This was causing the image to blow up in size on laptops with 125% or 150% scaling.
-        app_w = self.winfo_width() / scaling
-        app_h = self.winfo_height() / scaling
+        # Ask the preview pane exactly how much physical space it has
+        pane_w = self.preview_pane.winfo_width() / scaling
+        pane_h = self.preview_pane.winfo_height() / scaling
         
-        if app_w < 100 or app_h < 100:
+        # If the window is still launching and width is invalid, guess based on screen size
+        if pane_w <= 10 or pane_h <= 10:
             app_w = (self.winfo_screenwidth() / scaling) * 0.85
             app_h = (self.winfo_screenheight() / scaling) * 0.85
+            pane_w = app_w - 620
+            pane_h = app_h - 100
             
-        # Form pane (350) + sidebar (220) + padding takes ~620 logical pixels
-        available_w = app_w - 620
-        # Toolbar + bottom buttons + padding takes ~200 logical pixels height
-        available_h = app_h - 200
+        # Give some padding so the image doesn't touch the absolute edges
+        available_w = pane_w - 60
+        available_h = pane_h - 120 # Account for toolbar and padding
         
-        if available_w < 350: available_w = 350
-        if available_h < 250: available_h = 250
+        if available_w < 200: available_w = 200
+        if available_h < 200: available_h = 200
 
         img_ratio = self._current_pil_img.width / self._current_pil_img.height
         
-        # Calculate maximum width that satisfies the height constraint
         max_w_for_h = available_h * img_ratio
         
-        # Use the smallest width to ensure it fits perfectly in both dimensions
         constant_w = min(available_w, max_w_for_h)
         
-        if constant_w > 1100:
-            constant_w = 1100
+        if constant_w > 1200:
+            constant_w = 1200
 
         new_w = int(constant_w)
         new_h = int(constant_w / img_ratio)
