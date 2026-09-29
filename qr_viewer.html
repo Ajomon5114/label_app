@@ -361,30 +361,15 @@
             const iframe = document.getElementById('pdf-iframe');
             const fallback = document.getElementById('pdf-fallback');
 
-            // Try iframe first
-            iframe.src = url;
+            // Use Google Docs Viewer - works on all browsers including mobile
+            const googleViewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true';
+            iframe.src = googleViewerUrl;
             iframe.style.display = 'block';
             fallback.style.display = 'none';
             modal.classList.add('open');
             document.body.style.overflow = 'hidden';
-
-            // Detect if iframe fails (mobile browsers often block PDF iframes)
-            iframe.onerror = function() {
-                iframe.style.display = 'none';
-                fallback.style.display = 'flex';
-            };
-            // Fallback timer for mobile (iframe won't fire onerror)
-            setTimeout(function() {
-                try {
-                    if (!iframe.contentWindow || !iframe.contentWindow.document.body) {
-                        iframe.style.display = 'none';
-                        fallback.style.display = 'flex';
-                    }
-                } catch(e) {
-                    // cross-origin, assume it loaded
-                }
-            }, 3000);
         }
+
 
         function closePdfModal() {
             document.getElementById('pdf-modal').classList.remove('open');
