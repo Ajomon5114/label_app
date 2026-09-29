@@ -810,7 +810,7 @@ class LabelApp(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         # 1. SIDEBAR
-        sidebar = ctk.CTkFrame(self, width=340, corner_radius=0, fg_color="#181818")
+        sidebar = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color="#181818")
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
 
@@ -2278,8 +2278,22 @@ class LabelApp(ctk.CTk):
             self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
         )
 
-        # Enforce a constant fixed width for the preview as requested
-        constant_w = 1100
+        # Enforce a dynamic width for the preview so it doesn't squash the form on laptops
+        app_w = self.winfo_width()
+        if app_w < 100:
+            app_w = self.winfo_screenwidth() * 0.85
+            
+        # The form pane takes ~350, sidebar ~220 (Total ~570)
+        # We give the preview pane the remaining space, minus some padding
+        available_w = app_w - 650
+        
+        if available_w > 1100:
+            constant_w = 1100
+        elif available_w < 450:
+            constant_w = 450
+        else:
+            constant_w = int(available_w)
+
         img_ratio = pil_img.width / pil_img.height
         new_w = constant_w
         new_h = int(constant_w / img_ratio)
