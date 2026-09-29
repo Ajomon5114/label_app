@@ -2598,8 +2598,12 @@ class LabelApp(ctk.CTk):
 
         # Clear batch specific fields for the new product
         self.vars["batch"].set("")
+        self.vars["coa_url"].set("")
+        self.vars["spec_url"].set("")
         self.vars["last_gross_wt"].set("")
         self.vars["last_drum_label_text"].set("#Drum:")
+
+        self._build_form()
 
         self._save_to_history()
         self._refresh_product_dropdown()
@@ -2652,6 +2656,11 @@ class LabelApp(ctk.CTk):
             if not row:
                 return
             data = json.loads(row[0])
+
+            # Clear document URLs by default (will be restored if present in data)
+            self.vars["coa_url"].set("")
+            self.vars["spec_url"].set("")
+
             if "template" in data and data["template"] in self._templates:
                 self._selected_tpl.set(data["template"])
             for k, v in data.items():
@@ -3082,6 +3091,11 @@ class LabelApp(ctk.CTk):
             conn.close()
             if row:
                 data = json.loads(row[0])
+
+                # Clear document URLs by default (will be restored if present in data)
+                self.vars["coa_url"].set("")
+                self.vars["spec_url"].set("")
+
                 for k, v in data.items():
                     if k in self.vars:
                         self.vars[k].set(v)
