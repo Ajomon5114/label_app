@@ -1552,11 +1552,11 @@ class LabelApp(ctk.CTk):
         self.pages_lbl.pack(side="right", padx=(0, 5), pady=5)
 
         # Separator
-        separator = ctk.CTkFrame(preview_pane, height=1, fg_color="#3a3a3a")
+        separator = ctk.CTkFrame(self.preview_pane, height=1, fg_color="#3a3a3a")
         separator.grid(row=3, column=0, sticky="ew", padx=20, pady=10)
 
         # Folders
-        folders_frame = ctk.CTkFrame(preview_pane, fg_color="transparent")
+        folders_frame = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
         folders_frame.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
 
         # Generate a solid folder icon using PIL
