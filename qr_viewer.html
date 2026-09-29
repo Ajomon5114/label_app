@@ -174,6 +174,90 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+
+        /* PDF Modal */
+        .pdf-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            flex-direction: column;
+        }
+        .pdf-modal-overlay.open {
+            display: flex;
+        }
+        .pdf-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .pdf-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+        .pdf-modal-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .pdf-close-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .pdf-open-btn {
+            background: #1a4a6b;
+            border: 1px solid #1a6b9b;
+            color: #e0e0e0;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .pdf-iframe {
+            flex: 1;
+            border: none;
+            width: 100%;
+            background: #fff;
+        }
+        .pdf-fallback {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: #aaa;
+            font-size: 15px;
+            text-align: center;
+            padding: 30px;
+        }
+        .pdf-fallback-btn {
+            background: #1a6b3c;
+            border: none;
+            color: #fff;
+            border-radius: 10px;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn-active {
+            background-color: #1a6b3c !important;
+            border-color: #22a05a !important;
+        }
     </style>
 </head>
 
@@ -222,6 +306,23 @@
         </div>
     </div>
 
+    <!-- PDF Modal Overlay -->
+    <div class="pdf-modal-overlay" id="pdf-modal">
+        <div class="pdf-modal-header">
+            <span class="pdf-modal-title" id="pdf-modal-title">Document</span>
+            <div class="pdf-modal-actions">
+                <button class="pdf-open-btn" id="pdf-open-new" onclick="openInNewTab()">Open in Browser</button>
+                <button class="pdf-close-btn" onclick="closePdfModal()">✕ Close</button>
+            </div>
+        </div>
+        <iframe class="pdf-iframe" id="pdf-iframe" src="" title="PDF Viewer"></iframe>
+        <div class="pdf-fallback" id="pdf-fallback">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            <span>PDF preview not available in this browser.</span>
+            <button class="pdf-fallback-btn" id="pdf-fallback-btn" onclick="openInNewTab()">📄 Open PDF</button>
+        </div>
+    </div>
+
     <div class="footer">
         <button class="share-btn" onclick="shareData()">
             <svg viewBox="0 0 24 24">
@@ -247,14 +348,52 @@
 
         // Store document URLs globally
         let docUrls = { coa: null, spec: null };
+        let currentDocUrl = null;
 
         function openDoc(type) {
             const url = docUrls[type];
-            if (url) {
-                window.open(url, '_blank');
-            } else {
-                alert(type.toUpperCase() + ' document not attached.');
-            }
+            if (!url) { alert(type.toUpperCase() + ' document not attached.'); return; }
+            currentDocUrl = url;
+            const label = type === 'coa' ? 'Certificate of Analysis (COA)' : 'Specification Document';
+            document.getElementById('pdf-modal-title').textContent = label;
+
+            const modal = document.getElementById('pdf-modal');
+            const iframe = document.getElementById('pdf-iframe');
+            const fallback = document.getElementById('pdf-fallback');
+
+            // Try iframe first
+            iframe.src = url;
+            iframe.style.display = 'block';
+            fallback.style.display = 'none';
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            // Detect if iframe fails (mobile browsers often block PDF iframes)
+            iframe.onerror = function() {
+                iframe.style.display = 'none';
+                fallback.style.display = 'flex';
+            };
+            // Fallback timer for mobile (iframe won't fire onerror)
+            setTimeout(function() {
+                try {
+                    if (!iframe.contentWindow || !iframe.contentWindow.document.body) {
+                        iframe.style.display = 'none';
+                        fallback.style.display = 'flex';
+                    }
+                } catch(e) {
+                    // cross-origin, assume it loaded
+                }
+            }, 3000);
+        }
+
+        function closePdfModal() {
+            document.getElementById('pdf-modal').classList.remove('open');
+            document.getElementById('pdf-iframe').src = '';
+            document.body.style.overflow = '';
+        }
+
+        function openInNewTab() {
+            if (currentDocUrl) window.open(currentDocUrl, '_blank');
         }
 
         function parseData() {
@@ -296,12 +435,12 @@
             if (values['coa_url'] && values['coa_url'].trim() !== '') {
                 docUrls.coa = values['coa_url'];
                 const btn = document.getElementById('coa-btn');
-                if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+                if (btn) { btn.disabled = false; btn.classList.add('btn-active'); }
             }
             if (values['spec_url'] && values['spec_url'].trim() !== '') {
                 docUrls.spec = values['spec_url'];
                 const btn = document.getElementById('spec-btn');
-                if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+                if (btn) { btn.disabled = false; btn.classList.add('btn-active'); }
             }
 
             // Define order
