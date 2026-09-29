@@ -350,6 +350,17 @@
         let docUrls = { coa: null, spec: null };
         let currentDocUrl = null;
 
+        // Base URL where PDFs are stored on the website
+        const DOCS_BASE_URL = 'https://www.biomedingredients.com/assets/docs/';
+
+        function resolveDocUrl(val) {
+            if (!val) return null;
+            // If it's already a full URL, use as-is
+            if (val.startsWith('http://') || val.startsWith('https://')) return val;
+            // Otherwise treat as filename and prepend the base URL
+            return DOCS_BASE_URL + val.trim();
+        }
+
         function openDoc(type) {
             const url = docUrls[type];
             if (!url) { alert(type.toUpperCase() + ' document not attached.'); return; }
@@ -418,12 +429,12 @@
 
             // Wire up document buttons
             if (values['coa_url'] && values['coa_url'].trim() !== '') {
-                docUrls.coa = values['coa_url'];
+                docUrls.coa = resolveDocUrl(values['coa_url']);
                 const btn = document.getElementById('coa-btn');
                 if (btn) { btn.disabled = false; btn.classList.add('btn-active'); }
             }
             if (values['spec_url'] && values['spec_url'].trim() !== '') {
-                docUrls.spec = values['spec_url'];
+                docUrls.spec = resolveDocUrl(values['spec_url']);
                 const btn = document.getElementById('spec-btn');
                 if (btn) { btn.disabled = false; btn.classList.add('btn-active'); }
             }

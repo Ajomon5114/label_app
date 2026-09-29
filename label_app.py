@@ -1930,102 +1930,106 @@ class LabelApp(ctk.CTk):
             "Packaging Details", self.vars["last_drum_label_text"]
         )
 
-        # ---- DOCUMENT UPLOAD SECTION (COA / SPEC) ----
-        ctk.CTkButton(
+        # ---- DOCUMENT SECTION (COA / SPEC) ----
+        ctk.CTkLabel(
             main_col,
-            text="📄 Attach Documents (COA / Spec)",
-            fg_color="#333333",
-            hover_color="#444444",
-            text_color="#E0E0E0",
+            text="📄 Documents (COA / Spec)",
+            text_color="#AAAAAA",
             anchor="w",
-            height=36,
-            corner_radius=6,
-            font=ctk.CTkFont(size=13),
-            command=lambda: None,
-        ).pack(fill="x", pady=(15, 6), padx=10)
+            font=ctk.CTkFont(size=12, weight="bold"),
+        ).pack(fill="x", padx=10, pady=(15, 4))
 
-        def _upload_doc(doc_type):
-            import ftplib
-            from tkinter import filedialog, messagebox
+        ctk.CTkLabel(
+            main_col,
+            text="Type filename (e.g. ProductName_COA.pdf) — must be uploaded to\nassets/docs/ on your website",
+            text_color="#666666",
+            anchor="w",
+            font=ctk.CTkFont(size=11),
+        ).pack(fill="x", padx=10, pady=(0, 6))
 
-            if not FTP_HOST or not FTP_USER:
-                messagebox.showwarning(
-                    "FTP Not Configured",
-                    "Please go to Settings and fill in your FTP credentials first.",
-                    parent=self,
-                )
-                return
+        DOCS_BASE = "https://www.biomedingredients.com/assets/docs/"
 
-            pdf_path = filedialog.askopenfilename(
-                title=f"Select {doc_type} PDF",
-                filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
-                parent=self,
+        for doc_type, url_var in [("COA", self.vars["coa_url"]), ("Spec", self.vars["spec_url"])]:
+            row = ctk.CTkFrame(main_col, fg_color="transparent")
+            row.pack(fill="x", padx=10, pady=3)
+
+            entry = ctk.CTkEntry(
+                row,
+                placeholder_text=f"{doc_type} filename (e.g. ProductName_{doc_type}.pdf)",
+                placeholder_text_color="#555555",
+                height=34,
+                fg_color="#2a2a2a",
+                border_width=1,
+                border_color="#3a3a3a",
+                text_color="#E0E0E0",
+                corner_radius=6,
+                font=ctk.CTkFont(size=12),
             )
-            if not pdf_path:
-                return
+            # Show existing value if set
+            existing = url_var.get().strip()
+            if existing:
+                # If it's a full URL, extract just the filename for display
+                display = existing.split("/")[-1] if existing.startswith("http") else existing
+                entry.insert(0, display)
 
-            product = self.vars["product"].get().strip().replace(" ", "_")[:20]
-            batch = self.vars["batch"].get().strip().replace("/", "-")[:15]
-            filename = f"{product}_{batch}_{doc_type}.pdf".replace(" ", "_")
-            remote_path = FTP_UPLOAD_DIR.rstrip("/") + "/" + filename
-            public_url = FTP_PUBLIC_URL.rstrip("/") + "/" + filename
+            def _sync_entry(event=None, var=url_var, e=entry):
+                val = e.get().strip()
+                var.set(val)
 
-            try:
-                ftp = ftplib.FTP()
-                ftp.connect(FTP_HOST, 21, timeout=15)
-                ftp.login(FTP_USER, FTP_PASS)
-                with open(pdf_path, "rb") as f:
-                    ftp.storbinary(f"STOR {remote_path}", f)
-                ftp.quit()
+            entry.bind("<KeyRelease>", _sync_entry)
+            entry.bind("<FocusOut>", _sync_entry)
+            entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-                url_var = self.vars["coa_url"] if doc_type == "COA" else self.vars["spec_url"]
-                url_var.set(public_url)
-                messagebox.showinfo(
-                    "Upload Successful",
-                    f"{doc_type} uploaded!\n\nPublic URL:\n{public_url}",
+            # FTP Upload button (optional)
+            def _ftp_upload(dt=doc_type, var=url_var, e=entry):
+                import ftplib
+                from tkinter import filedialog, messagebox
+                if not FTP_HOST or not FTP_USER:
+                    messagebox.showwarning(
+                        "FTP Not Configured",
+                        "Go to Settings → fill in FTP credentials to use auto-upload.\n\nOr manually upload the PDF to:\n" + DOCS_BASE,
+                        parent=self,
+                    )
+                    return
+                pdf_path = filedialog.askopenfilename(
+                    title=f"Select {dt} PDF",
+                    filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
                     parent=self,
                 )
-                _refresh_doc_buttons()
-            except Exception as ex:
-                messagebox.showerror(
-                    "Upload Failed",
-                    f"Could not upload {doc_type}:\n{ex}",
-                    parent=self,
-                )
+                if not pdf_path:
+                    return
+                product = self.vars["product"].get().strip().replace(" ", "_")[:20]
+                batch = self.vars["batch"].get().strip().replace("/", "-")[:15]
+                filename = f"{product}_{batch}_{dt}.pdf".replace(" ", "_")
+                remote_path = FTP_UPLOAD_DIR.rstrip("/") + "/" + filename
+                try:
+                    ftp = ftplib.FTP()
+                    ftp.connect(FTP_HOST, 21, timeout=15)
+                    ftp.login(FTP_USER, FTP_PASS)
+                    with open(pdf_path, "rb") as f:
+                        ftp.storbinary(f"STOR {remote_path}", f)
+                    ftp.quit()
+                    e.delete(0, "end")
+                    e.insert(0, filename)
+                    var.set(filename)
+                    messagebox.showinfo(
+                        "Uploaded ✅",
+                        f"{dt} uploaded!\n\nFilename: {filename}\nURL: {DOCS_BASE}{filename}",
+                        parent=self,
+                    )
+                except Exception as ex:
+                    messagebox.showerror("Upload Failed", f"Could not upload {dt}:\n{ex}", parent=self)
 
-        def _clear_doc(doc_type):
-            url_var = self.vars["coa_url"] if doc_type == "COA" else self.vars["spec_url"]
-            url_var.set("")
-            _refresh_doc_buttons()
+            ctk.CTkButton(
+                row, text="⬆", width=34, height=34,
+                fg_color="#1a3a5c", hover_color="#1a5a8b",
+                text_color="#60A5FA", corner_radius=6,
+                font=ctk.CTkFont(size=16),
+                command=_ftp_upload,
+            ).pack(side="right")
 
-        self._doc_btn_frame = ctk.CTkFrame(main_col, fg_color="transparent")
-        self._doc_btn_frame.pack(fill="x", padx=10, pady=4)
+        _refresh_doc_buttons = lambda: None  # no longer needed but keep ref safe
 
-        def _refresh_doc_buttons():
-            for w in self._doc_btn_frame.winfo_children():
-                w.destroy()
-            for doc_type, url_var in [("COA", self.vars["coa_url"]), ("Spec", self.vars["spec_url"])]:
-                row = ctk.CTkFrame(self._doc_btn_frame, fg_color="transparent")
-                row.pack(fill="x", pady=3)
-                has_url = bool(url_var.get().strip())
-                btn_color = "#1a6b3c" if has_url else "#333333"
-                btn_text = f"✅ {doc_type} Uploaded" if has_url else f"📎 Upload {doc_type} PDF"
-                ctk.CTkButton(
-                    row, text=btn_text, fg_color=btn_color, hover_color="#444444",
-                    text_color="#E0E0E0", anchor="w", height=34, corner_radius=6,
-                    font=ctk.CTkFont(size=12),
-                    command=lambda dt=doc_type: _upload_doc(dt),
-                ).pack(side="left", fill="x", expand=True, padx=(0, 5))
-                if has_url:
-                    ctk.CTkButton(
-                        row, text="✕", width=34, height=34,
-                        fg_color="#4a1a1a", hover_color="#6a2a2a",
-                        text_color="#ff8080", corner_radius=6,
-                        font=ctk.CTkFont(size=14),
-                        command=lambda dt=doc_type: _clear_doc(dt),
-                    ).pack(side="right")
-
-        _refresh_doc_buttons()
 
     def _on_template_change(self, *args):
         self._build_form()

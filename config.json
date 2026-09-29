@@ -1,0 +1,8 @@
+{
+  "network_dir": "",
+  "ftp_host": "ftp.biomedingredients.com",
+  "ftp_user": "biome893",
+  "ftp_pass": "bOi@9034#m",
+  "ftp_upload_dir": "public_html/assets/docs",
+  "ftp_public_url": "https://www.biomedingredients.com/documents/"
+}
