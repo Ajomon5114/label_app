@@ -795,6 +795,7 @@ class LabelApp(ctk.CTk):
         }
 
         self._render_after_id = None
+        self._resize_after_id = None
         self._is_rendering = False
 
         for v in self.vars.values():
@@ -803,6 +804,15 @@ class LabelApp(ctk.CTk):
         self._init_db()
         self._build_ui()
         self._on_change_debounced()
+        
+        # Bind resize event to dynamically scale the preview image
+        self.bind("<Configure>", self._on_window_resize)
+        
+    def _on_window_resize(self, event):
+        if event.widget == self:
+            if self._resize_after_id:
+                self.after_cancel(self._resize_after_id)
+            self._resize_after_id = self.after(100, self._resize_preview_image)
 
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=0)
@@ -2277,9 +2287,12 @@ class LabelApp(ctk.CTk):
         threading.Thread(target=render_thread, daemon=True).start()
 
     def _update_preview_ui(self, pil_img):
-        scaling = (
-            self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
-        )
+        self._current_pil_img = pil_img
+        self._resize_preview_image()
+
+    def _resize_preview_image(self, event=None):
+        if not hasattr(self, "_current_pil_img") or not self._current_pil_img:
+            return
 
         # Enforce a dynamic size for the preview so it fits both width and height
         app_w = self.winfo_width()
@@ -2297,7 +2310,7 @@ class LabelApp(ctk.CTk):
         if available_w < 400: available_w = 400
         if available_h < 300: available_h = 300
 
-        img_ratio = pil_img.width / pil_img.height
+        img_ratio = self._current_pil_img.width / self._current_pil_img.height
         
         # Calculate maximum width that satisfies the height constraint
         max_w_for_h = available_h * img_ratio
@@ -2312,7 +2325,7 @@ class LabelApp(ctk.CTk):
         new_h = int(constant_w / img_ratio)
 
         ctk_img = ctk.CTkImage(
-            light_image=pil_img, dark_image=pil_img, size=(new_w, new_h)
+            light_image=self._current_pil_img, dark_image=self._current_pil_img, size=(new_w, new_h)
         )
         self.preview_lbl.configure(image=ctk_img, text="")
         self.preview_lbl._image_ref = ctk_img
