@@ -1345,10 +1345,12 @@ class LabelApp(ctk.CTk):
         # FORM PANE
         form_pane = ctk.CTkFrame(
             main_area,
+            width=350,
             corner_radius=0,
             fg_color="#1A1A1A",
         )
         form_pane.grid(row=0, column=0, sticky="nsew")
+        form_pane.grid_propagate(False)
 
         # Vertical Separator
         vertical_sep = ctk.CTkFrame(main_area, width=1, fg_color="#3a3a3a")
@@ -1395,6 +1397,7 @@ class LabelApp(ctk.CTk):
         # PREVIEW PANE
         preview_pane = ctk.CTkFrame(main_area, corner_radius=0, fg_color="#181818")
         preview_pane.grid(row=0, column=2, sticky="nsew")
+        preview_pane.grid_propagate(False)
         preview_pane.grid_columnconfigure(0, weight=1)
         preview_pane.grid_rowconfigure(1, weight=1)
 
