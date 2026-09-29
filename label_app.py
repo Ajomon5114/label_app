@@ -806,12 +806,12 @@ class LabelApp(ctk.CTk):
         self._on_change_debounced()
 
     def _build_ui(self):
-        self.grid_columnconfigure(0, weight=0)
-        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=5)
         self.grid_rowconfigure(0, weight=1)
 
         # 1. SIDEBAR
-        sidebar = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color="#181818")
+        sidebar = ctk.CTkFrame(self, corner_radius=0, fg_color="#181818")
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
 
@@ -1339,14 +1339,13 @@ class LabelApp(ctk.CTk):
         main_area = ctk.CTkFrame(self, fg_color="#181818", corner_radius=0)
         main_area.grid(row=0, column=1, sticky="nsew")
         main_area.grid_rowconfigure(0, weight=1)
-        main_area.grid_columnconfigure(0, weight=0, minsize=350)
+        main_area.grid_columnconfigure(0, weight=3, minsize=250)
         main_area.grid_columnconfigure(1, weight=0)  # Separator
-        main_area.grid_columnconfigure(2, weight=1)
+        main_area.grid_columnconfigure(2, weight=6, minsize=350)
 
         # FORM PANE
         form_pane = ctk.CTkFrame(
             main_area,
-            width=350,
             corner_radius=0,
             fg_color="#1A1A1A",
         )
