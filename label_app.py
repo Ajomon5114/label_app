@@ -2293,29 +2293,32 @@ class LabelApp(ctk.CTk):
     def _resize_preview_image(self, event=None):
         if not hasattr(self, "_current_pil_img") or not self._current_pil_img:
             return
+            
+        scaling = self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
 
-        # Enforce a dynamic size for the preview so it fits both width and height
-        app_w = self.winfo_width()
-        app_h = self.winfo_height()
+        # winfo_width returns physical pixels on high-DPI Windows, but CTkImage expects logical pixels!
+        # This was causing the image to blow up in size on laptops with 125% or 150% scaling.
+        app_w = self.winfo_width() / scaling
+        app_h = self.winfo_height() / scaling
         
         if app_w < 100 or app_h < 100:
-            app_w = self.winfo_screenwidth() * 0.85
-            app_h = self.winfo_screenheight() * 0.85
+            app_w = (self.winfo_screenwidth() / scaling) * 0.85
+            app_h = (self.winfo_screenheight() / scaling) * 0.85
             
-        # Form pane + sidebar takes ~570px width
+        # Form pane (350) + sidebar (220) + padding takes ~620 logical pixels
         available_w = app_w - 620
-        # Toolbar + padding takes ~180px height
-        available_h = app_h - 180
+        # Toolbar + bottom buttons + padding takes ~200 logical pixels height
+        available_h = app_h - 200
         
-        if available_w < 400: available_w = 400
-        if available_h < 300: available_h = 300
+        if available_w < 350: available_w = 350
+        if available_h < 250: available_h = 250
 
         img_ratio = self._current_pil_img.width / self._current_pil_img.height
         
         # Calculate maximum width that satisfies the height constraint
         max_w_for_h = available_h * img_ratio
         
-        # Use the smallest width to ensure it fits in both dimensions
+        # Use the smallest width to ensure it fits perfectly in both dimensions
         constant_w = min(available_w, max_w_for_h)
         
         if constant_w > 1100:
