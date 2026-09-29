@@ -806,9 +806,9 @@ class LabelApp(ctk.CTk):
         self._on_change_debounced()
 
     def _build_ui(self):
-        # Sidebar gets 1 part, main area gets 7 parts (Sidebar is 12.5%)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=7)
+        # Sidebar gets 15%, main area gets 85%
+        self.grid_columnconfigure(0, weight=15, uniform="root")
+        self.grid_columnconfigure(1, weight=85, uniform="root")
         self.grid_rowconfigure(0, weight=1)
 
         # 1. SIDEBAR
@@ -1340,10 +1340,10 @@ class LabelApp(ctk.CTk):
         main_area = ctk.CTkFrame(self, fg_color="#181818", corner_radius=0)
         main_area.grid(row=0, column=1, sticky="nsew")
         main_area.grid_rowconfigure(0, weight=1)
-        # Form panel gets 1 part, preview pane gets 3 parts (Form is 25%, Preview is 75%)
-        main_area.grid_columnconfigure(0, weight=1)
+        # Form panel gets 30%, preview pane gets 70%
+        main_area.grid_columnconfigure(0, weight=30, uniform="main")
         main_area.grid_columnconfigure(1, weight=0)  # Separator
-        main_area.grid_columnconfigure(2, weight=3)
+        main_area.grid_columnconfigure(2, weight=70, uniform="main")
 
         # FORM PANE
         form_pane = ctk.CTkFrame(
