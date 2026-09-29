@@ -2657,7 +2657,8 @@ class LabelApp(ctk.CTk):
                 return
             data = json.loads(row[0])
 
-            # Clear document URLs by default (will be restored if present in data)
+            # Always keep document URLs empty when loading from history
+            # The user wants to manually upload them every time.
             self.vars["coa_url"].set("")
             self.vars["spec_url"].set("")
 
@@ -2665,6 +2666,8 @@ class LabelApp(ctk.CTk):
                 self._selected_tpl.set(data["template"])
             for k, v in data.items():
                 if k in self.vars:
+                    if k in ("coa_url", "spec_url"):
+                        continue
                     # Fallback for FSSAI and USFDA if they are saved as empty
                     if k == "fssai" and not v.strip():
                         self.vars[k].set("10622999000028")
@@ -3092,12 +3095,14 @@ class LabelApp(ctk.CTk):
             if row:
                 data = json.loads(row[0])
 
-                # Clear document URLs by default (will be restored if present in data)
+                # Always keep document URLs empty when loading bookmarks
                 self.vars["coa_url"].set("")
                 self.vars["spec_url"].set("")
 
                 for k, v in data.items():
                     if k in self.vars:
+                        if k in ("coa_url", "spec_url"):
+                            continue
                         self.vars[k].set(v)
                 if "template" in data:
                     self._selected_tpl.set(data["template"])
