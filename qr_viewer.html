@@ -311,6 +311,7 @@
         <div class="pdf-modal-header">
             <span class="pdf-modal-title" id="pdf-modal-title">Document</span>
             <div class="pdf-modal-actions">
+                <button class="pdf-open-btn" onclick="downloadPdf()">⬇ Download</button>
                 <button class="pdf-open-btn" id="pdf-open-new" onclick="openInNewTab()">Open in Browser</button>
                 <button class="pdf-close-btn" onclick="closePdfModal()">✕ Close</button>
             </div>
@@ -390,6 +391,18 @@
 
         function openInNewTab() {
             if (currentDocUrl) window.open(currentDocUrl, '_blank');
+        }
+
+        function downloadPdf() {
+            if (currentDocUrl) {
+                const a = document.createElement('a');
+                a.href = currentDocUrl;
+                const filename = currentDocUrl.split('/').pop() || 'document.pdf';
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
         }
 
         function parseData() {
