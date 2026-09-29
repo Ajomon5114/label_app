@@ -50,12 +50,27 @@ import json
 
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 NETWORK_DIR = BASE_DIR
+FTP_HOST = ""
+FTP_USER = ""
+FTP_PASS = ""
+FTP_UPLOAD_DIR = "/public_html/documents/"
+FTP_PUBLIC_URL = "https://www.biomedingredients.com/documents/"
 if os.path.exists(CONFIG_PATH):
     try:
         with open(CONFIG_PATH, "r") as f:
             cfg = json.load(f)
             if "network_dir" in cfg and cfg["network_dir"]:
                 NETWORK_DIR = cfg["network_dir"]
+            if "ftp_host" in cfg:
+                FTP_HOST = cfg["ftp_host"]
+            if "ftp_user" in cfg:
+                FTP_USER = cfg["ftp_user"]
+            if "ftp_pass" in cfg:
+                FTP_PASS = cfg["ftp_pass"]
+            if "ftp_upload_dir" in cfg:
+                FTP_UPLOAD_DIR = cfg["ftp_upload_dir"]
+            if "ftp_public_url" in cfg:
+                FTP_PUBLIC_URL = cfg["ftp_public_url"]
     except:
         pass
 
@@ -767,6 +782,8 @@ class LabelApp(ctk.CTk):
             "origin": ctk.StringVar(value=""),
             "last_gross_wt": ctk.StringVar(value=""),
             "last_drum_label_text": ctk.StringVar(value=""),
+            "coa_url": ctk.StringVar(value=""),
+            "spec_url": ctk.StringVar(value=""),
         }
 
         self._render_after_id = None
@@ -1913,6 +1930,103 @@ class LabelApp(ctk.CTk):
             "Packaging Details", self.vars["last_drum_label_text"]
         )
 
+        # ---- DOCUMENT UPLOAD SECTION (COA / SPEC) ----
+        ctk.CTkButton(
+            main_col,
+            text="📄 Attach Documents (COA / Spec)",
+            fg_color="#333333",
+            hover_color="#444444",
+            text_color="#E0E0E0",
+            anchor="w",
+            height=36,
+            corner_radius=6,
+            font=ctk.CTkFont(size=13),
+            command=lambda: None,
+        ).pack(fill="x", pady=(15, 6), padx=10)
+
+        def _upload_doc(doc_type):
+            import ftplib
+            from tkinter import filedialog, messagebox
+
+            if not FTP_HOST or not FTP_USER:
+                messagebox.showwarning(
+                    "FTP Not Configured",
+                    "Please go to Settings and fill in your FTP credentials first.",
+                    parent=self,
+                )
+                return
+
+            pdf_path = filedialog.askopenfilename(
+                title=f"Select {doc_type} PDF",
+                filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
+                parent=self,
+            )
+            if not pdf_path:
+                return
+
+            product = self.vars["product"].get().strip().replace(" ", "_")[:20]
+            batch = self.vars["batch"].get().strip().replace("/", "-")[:15]
+            filename = f"{product}_{batch}_{doc_type}.pdf".replace(" ", "_")
+            remote_path = FTP_UPLOAD_DIR.rstrip("/") + "/" + filename
+            public_url = FTP_PUBLIC_URL.rstrip("/") + "/" + filename
+
+            try:
+                ftp = ftplib.FTP()
+                ftp.connect(FTP_HOST, 21, timeout=15)
+                ftp.login(FTP_USER, FTP_PASS)
+                with open(pdf_path, "rb") as f:
+                    ftp.storbinary(f"STOR {remote_path}", f)
+                ftp.quit()
+
+                url_var = self.vars["coa_url"] if doc_type == "COA" else self.vars["spec_url"]
+                url_var.set(public_url)
+                messagebox.showinfo(
+                    "Upload Successful",
+                    f"{doc_type} uploaded!\n\nPublic URL:\n{public_url}",
+                    parent=self,
+                )
+                _refresh_doc_buttons()
+            except Exception as ex:
+                messagebox.showerror(
+                    "Upload Failed",
+                    f"Could not upload {doc_type}:\n{ex}",
+                    parent=self,
+                )
+
+        def _clear_doc(doc_type):
+            url_var = self.vars["coa_url"] if doc_type == "COA" else self.vars["spec_url"]
+            url_var.set("")
+            _refresh_doc_buttons()
+
+        self._doc_btn_frame = ctk.CTkFrame(main_col, fg_color="transparent")
+        self._doc_btn_frame.pack(fill="x", padx=10, pady=4)
+
+        def _refresh_doc_buttons():
+            for w in self._doc_btn_frame.winfo_children():
+                w.destroy()
+            for doc_type, url_var in [("COA", self.vars["coa_url"]), ("Spec", self.vars["spec_url"])]:
+                row = ctk.CTkFrame(self._doc_btn_frame, fg_color="transparent")
+                row.pack(fill="x", pady=3)
+                has_url = bool(url_var.get().strip())
+                btn_color = "#1a6b3c" if has_url else "#333333"
+                btn_text = f"✅ {doc_type} Uploaded" if has_url else f"📎 Upload {doc_type} PDF"
+                ctk.CTkButton(
+                    row, text=btn_text, fg_color=btn_color, hover_color="#444444",
+                    text_color="#E0E0E0", anchor="w", height=34, corner_radius=6,
+                    font=ctk.CTkFont(size=12),
+                    command=lambda dt=doc_type: _upload_doc(dt),
+                ).pack(side="left", fill="x", expand=True, padx=(0, 5))
+                if has_url:
+                    ctk.CTkButton(
+                        row, text="✕", width=34, height=34,
+                        fg_color="#4a1a1a", hover_color="#6a2a2a",
+                        text_color="#ff8080", corner_radius=6,
+                        font=ctk.CTkFont(size=14),
+                        command=lambda dt=doc_type: _clear_doc(dt),
+                    ).pack(side="right")
+
+        _refresh_doc_buttons()
+
     def _on_template_change(self, *args):
         self._build_form()
         self._on_change_debounced()
@@ -1943,6 +2057,8 @@ class LabelApp(ctk.CTk):
             label_data["gross_wt"] = gross
             label_data["drum"] = f"{dn}/{dt:02d}"
             label_data["drum_label_text"] = "#Drum:"
+            label_data["coa_url"] = self.vars.get("coa_url", ctk.StringVar()).get().strip()
+            label_data["spec_url"] = self.vars.get("spec_url", ctk.StringVar()).get().strip()
             labels.append(label_data)
 
         if labels:
@@ -3267,7 +3383,7 @@ class LabelApp(ctk.CTk):
             return
         self.settings_win = ctk.CTkToplevel(self)
         self.settings_win.title("Settings")
-        self.settings_win.geometry("500x300")
+        self.settings_win.geometry("520x620")
         self.settings_win.attributes("-topmost", True)
         self.settings_win.after(
             200,
@@ -3275,67 +3391,117 @@ class LabelApp(ctk.CTk):
                 os.path.join(ASSET_DIR, "app_icon_logo.ico")
             ),
         )
-        lbl = ctk.CTkLabel(
-            self.settings_win,
-            text="?? App Settings",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        )
-        lbl.pack(pady=20)
+
+        scroll = ctk.CTkScrollableFrame(self.settings_win, fg_color="transparent")
+        scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
         ctk.CTkLabel(
-            self.settings_win, text="Shared Network Directory:", anchor="w"
-        ).pack(fill="x", padx=20)
-        dir_frame = ctk.CTkFrame(self.settings_win, fg_color="transparent")
-        dir_frame.pack(fill="x", padx=20, pady=5)
+            scroll, text="⚙️ App Settings",
+            font=ctk.CTkFont(size=18, weight="bold"),
+        ).pack(pady=(10, 20), anchor="w", padx=10)
+
+        # ---- NETWORK DIRECTORY ----
+        ctk.CTkLabel(
+            scroll, text="Shared Network Directory:", anchor="w",
+            font=ctk.CTkFont(size=13, weight="bold")
+        ).pack(fill="x", padx=10, pady=(0, 4))
+        dir_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        dir_frame.pack(fill="x", padx=10, pady=(0, 15))
         self.network_dir_var = ctk.StringVar(
             value=NETWORK_DIR if NETWORK_DIR != BASE_DIR else ""
         )
-        entry = ctk.CTkEntry(dir_frame, textvariable=self.network_dir_var)
+        entry = ctk.CTkEntry(dir_frame, textvariable=self.network_dir_var,
+                             placeholder_text="Leave empty to use app folder",
+                             placeholder_text_color="#888888")
         entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
 
         def browse():
             from tkinter import filedialog
-
             path = filedialog.askdirectory(
                 parent=self.settings_win, title="Select Public Network Folder"
             )
             if path:
                 self.network_dir_var.set(path)
 
-        ctk.CTkButton(dir_frame, text="Browse...", width=80, command=browse).pack(
-            side="right"
-        )
+        ctk.CTkButton(dir_frame, text="Browse...", width=80, command=browse).pack(side="right")
+
+        # ---- FTP SETTINGS ----
+        ctk.CTkLabel(
+            scroll, text="FTP / Document Upload Settings",
+            font=ctk.CTkFont(size=13, weight="bold"), anchor="w"
+        ).pack(fill="x", padx=10, pady=(10, 4))
+        ctk.CTkLabel(
+            scroll, text="Used for uploading COA & Specification PDFs to your website.",
+            font=ctk.CTkFont(size=11), text_color="#888888", anchor="w"
+        ).pack(fill="x", padx=10, pady=(0, 8))
+
+        def make_ftp_field(label_text, default_val, show=""):
+            ctk.CTkLabel(scroll, text=label_text, anchor="w",
+                         font=ctk.CTkFont(size=12)).pack(fill="x", padx=10, pady=(4, 0))
+            var = ctk.StringVar(value=default_val)
+            e = ctk.CTkEntry(scroll, textvariable=var, show=show, height=34,
+                             fg_color="#2a2a2a", border_color="#3a3a3a",
+                             placeholder_text_color="#888888")
+            e.pack(fill="x", padx=10, pady=(2, 6))
+            return var
+
+        self.ftp_host_var = make_ftp_field("FTP Host (e.g. ftp.biomedingredients.com):", FTP_HOST)
+        self.ftp_user_var = make_ftp_field("FTP Username:", FTP_USER)
+        self.ftp_pass_var = make_ftp_field("FTP Password:", FTP_PASS, show="•")
+        self.ftp_dir_var = make_ftp_field("Upload Folder on Server:", FTP_UPLOAD_DIR)
+        self.ftp_url_var = make_ftp_field("Public URL Base:", FTP_PUBLIC_URL)
+
+        def test_ftp():
+            import ftplib
+            from tkinter import messagebox
+            try:
+                ftp = ftplib.FTP()
+                ftp.connect(self.ftp_host_var.get().strip(), 21, timeout=10)
+                ftp.login(self.ftp_user_var.get().strip(), self.ftp_pass_var.get().strip())
+                ftp.quit()
+                messagebox.showinfo("FTP Test", "✅ FTP connection successful!", parent=self.settings_win)
+            except Exception as ex:
+                messagebox.showerror("FTP Test Failed", f"❌ Could not connect:\n{ex}", parent=self.settings_win)
+
+        ctk.CTkButton(
+            scroll, text="🔗 Test FTP Connection",
+            fg_color="#1a4a6b", hover_color="#1a5a8b",
+            font=ctk.CTkFont(size=12), height=36,
+            command=test_ftp
+        ).pack(fill="x", padx=10, pady=(0, 15))
 
         def save():
             import json, os
             from tkinter import messagebox
-
             val = self.network_dir_var.get().strip()
             if val and not os.path.exists(val):
                 messagebox.showerror(
-                    "Error",
-                    "The specified directory does not exist.",
+                    "Error", "The specified directory does not exist.",
                     parent=self.settings_win,
                 )
                 return
-            cfg = {"network_dir": val}
+            cfg = {
+                "network_dir": val,
+                "ftp_host": self.ftp_host_var.get().strip(),
+                "ftp_user": self.ftp_user_var.get().strip(),
+                "ftp_pass": self.ftp_pass_var.get().strip(),
+                "ftp_upload_dir": self.ftp_dir_var.get().strip(),
+                "ftp_public_url": self.ftp_url_var.get().strip(),
+            }
             with open(CONFIG_PATH, "w") as f:
-                json.dump(cfg, f)
+                json.dump(cfg, f, indent=2)
             messagebox.showinfo(
-                "Saved",
-                "Settings saved successfully! Please restart the application for changes to take effect.",
+                "Saved", "Settings saved! Restart the app to apply FTP settings.",
                 parent=self.settings_win,
             )
             self.settings_win.destroy()
 
-        save_btn = ctk.CTkButton(
-            self.settings_win,
-            text="Save Settings & Restart",
-            fg_color="#10B981",
-            hover_color="#059669",
-            font=ctk.CTkFont(weight="bold"),
+        ctk.CTkButton(
+            scroll, text="💾 Save Settings",
+            fg_color="#10B981", hover_color="#059669",
+            font=ctk.CTkFont(size=13, weight="bold"), height=40,
             command=save,
-        )
-        save_btn.pack(pady=30)
+        ).pack(fill="x", padx=10, pady=(5, 20))
 
     def open_filter_window(self):
         if hasattr(self, "filter_win") and self.filter_win.winfo_exists():

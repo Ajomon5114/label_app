@@ -141,6 +141,16 @@
             stroke-linejoin: round;
         }
 
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn:not(:disabled):hover {
+            background-color: #444444;
+            border-color: #888888;
+        }
+
         .footer {
             display: flex;
             justify-content: flex-end;
@@ -189,7 +199,7 @@
         </div>
 
         <div class="buttons-row">
-            <button class="btn" onclick="alert('COA Document not attached.')">
+            <button class="btn" id="coa-btn" onclick="openDoc('coa')" disabled>
                 <svg viewBox="0 0 24 24">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -199,7 +209,7 @@
                 </svg>
                 COA
             </button>
-            <button class="btn" onclick="alert('Specification Document not attached.')">
+            <button class="btn" id="spec-btn" onclick="openDoc('spec')" disabled>
                 <svg viewBox="0 0 24 24">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -234,6 +244,18 @@
             "usfda": "USFDA No.",
             "origin": "Origin"
         };
+
+        // Store document URLs globally
+        let docUrls = { coa: null, spec: null };
+
+        function openDoc(type) {
+            const url = docUrls[type];
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                alert(type.toUpperCase() + ' document not attached.');
+            }
+        }
 
         function parseData() {
             try {
@@ -270,6 +292,18 @@
             const container = document.getElementById('fields-container');
             container.innerHTML = '';
 
+            // Wire up document buttons
+            if (values['coa_url'] && values['coa_url'].trim() !== '') {
+                docUrls.coa = values['coa_url'];
+                const btn = document.getElementById('coa-btn');
+                if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            }
+            if (values['spec_url'] && values['spec_url'].trim() !== '') {
+                docUrls.spec = values['spec_url'];
+                const btn = document.getElementById('spec-btn');
+                if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            }
+
             // Define order
             const order = ['product', 'batch', 'mfg_date', 'exp_date', 'total_quantity', 'fssai', 'usfda', 'origin'];
 
@@ -281,7 +315,7 @@
             });
 
             // Render any extra fields not in order
-            const unwanted = ['net_wt', 'gross_wt', 'drum_capacity', 'drum', 'drum_label_text', 'custom_tare', 'last_drum_label_text'];
+            const unwanted = ['net_wt', 'gross_wt', 'drum_capacity', 'drum', 'drum_label_text', 'custom_tare', 'last_drum_label_text', 'coa_url', 'spec_url'];
             Object.keys(values).forEach(key => {
                 if (!order.includes(key) && !unwanted.includes(key) && values[key] && values[key].trim() !== '') {
                     addField(container, key.replace(/_/g, ' '), values[key]);
