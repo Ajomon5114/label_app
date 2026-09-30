@@ -1471,7 +1471,8 @@ class LabelApp(ctk.CTk):
         actions_frame.pack(side="bottom", fill="x", padx=20, pady=(0, 10))
 
         btn_font = ctk.CTkFont(family="Segoe UI", size=13)
-        ctk.CTkButton(
+
+        self._reset_btn = ctk.CTkButton(
             actions_frame,
             text="↻ Reset View",
             command=self.reset,
@@ -1483,9 +1484,10 @@ class LabelApp(ctk.CTk):
             width=100,
             height=32,
             corner_radius=6,
-        ).pack(side="left")
+        )
+        self._reset_btn.pack(side="left")
 
-        ctk.CTkButton(
+        self._save_btn = ctk.CTkButton(
             actions_frame,
             text="💾 Save",
             command=self.manual_save_to_db,
@@ -1497,9 +1499,10 @@ class LabelApp(ctk.CTk):
             width=100,
             height=32,
             corner_radius=6,
-        ).pack(side="left", padx=10)
+        )
+        self._save_btn.pack(side="left", padx=10)
 
-        ctk.CTkButton(
+        self._print_btn = ctk.CTkButton(
             actions_frame,
             text="🖨 Print",
             command=self.print_pdf,
@@ -1511,9 +1514,10 @@ class LabelApp(ctk.CTk):
             width=80,
             height=32,
             corner_radius=6,
-        ).pack(side="right")
+        )
+        self._print_btn.pack(side="right")
 
-        ctk.CTkButton(
+        self._savepdf_btn = ctk.CTkButton(
             actions_frame,
             text="📄 Save PDF",
             command=self.save_pdf,
@@ -1525,7 +1529,8 @@ class LabelApp(ctk.CTk):
             width=80,
             height=32,
             corner_radius=6,
-        ).pack(side="right", padx=10)
+        )
+        self._savepdf_btn.pack(side="right", padx=10)
 
         pages_frame = ctk.CTkFrame(
             actions_frame,
@@ -1553,6 +1558,35 @@ class LabelApp(ctk.CTk):
             corner_radius=4,
         )
         self.pages_lbl.pack(side="right", padx=(0, 5), pady=5)
+
+        # Responsive action buttons: collapse to icons when preview pane is narrow
+        _full_btn_labels = {
+            "_reset_btn":   "↻ Reset View",
+            "_save_btn":    "💾 Save",
+            "_savepdf_btn": "📄 Save PDF",
+            "_print_btn":   "🖨 Print",
+        }
+        _short_btn_labels = {
+            "_reset_btn":   "↻",
+            "_save_btn":    "💾",
+            "_savepdf_btn": "📄",
+            "_print_btn":   "🖨",
+        }
+
+        def _on_actions_resize(event):
+            try:
+                scaling = ctk.ScalingTracker.get_window_scaling(self)
+            except Exception:
+                scaling = 1.0
+            logical_w = event.width / scaling
+            labels = _short_btn_labels if logical_w < 550 else _full_btn_labels
+            for attr, lbl in labels.items():
+                btn = getattr(self, attr, None)
+                if btn and btn.cget("text") != lbl:
+                    btn.configure(text=lbl)
+
+        actions_frame.bind("<Configure>", _on_actions_resize)
+
 
         # 2. Preview Container (Pack SECOND to fill remaining top space)
         preview_container = ctk.CTkFrame(
