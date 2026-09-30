@@ -1376,7 +1376,7 @@ class LabelApp(ctk.CTk):
                 self._selected_tpl.set(self._templates[0])
             self._on_template_change()
 
-        for i, t_name in enumerate(_full_tab_names):
+        for i, t_name in enumerate(_short_tab_names):
             btn = ctk.CTkButton(
                 top_tabs_frame,
                 text=t_name,
@@ -1395,7 +1395,7 @@ class LabelApp(ctk.CTk):
         def _on_tabs_resize(event):
             """Dynamically shorten tab text when the panel is too narrow."""
             w = event.width
-            if w < 260:
+            if w < 360:
                 labels = _short_tab_names
             else:
                 labels = _full_tab_names
