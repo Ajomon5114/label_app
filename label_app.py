@@ -1376,7 +1376,7 @@ class LabelApp(ctk.CTk):
                 self._selected_tpl.set(self._templates[0])
             self._on_template_change()
 
-        for i, t_name in enumerate(_short_tab_names):
+        for i, t_name in enumerate(_full_tab_names):
             btn = ctk.CTkButton(
                 top_tabs_frame,
                 text=t_name,
@@ -1393,9 +1393,15 @@ class LabelApp(ctk.CTk):
             self.tab_buttons.append(btn)
 
         def _on_tabs_resize(event):
-            """Dynamically shorten tab text when the panel is too narrow."""
-            w = event.width
-            if w < 360:
+            """Collapse tab text when the panel is too narrow.
+            Divide by scaling factor because event.width is in physical pixels
+            but our threshold is in logical pixels."""
+            try:
+                scaling = ctk.ScalingTracker.get_window_scaling(self)
+            except Exception:
+                scaling = 1.0
+            logical_w = event.width / scaling
+            if logical_w < 320:
                 labels = _short_tab_names
             else:
                 labels = _full_tab_names
