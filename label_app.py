@@ -743,13 +743,13 @@ class LabelApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("")
-        
+
         # Responsive sizing: 85% of screen width/height, ensuring it fits perfectly on any display/scaling
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
         app_w = int(screen_w * 0.85)
         app_h = int(screen_h * 0.85)
-        
+
         # Keep minimum sizes so UI elements don't get squashed
         self.minsize(900, 600)
         self.geometry(f"{app_w}x{app_h}")
@@ -806,9 +806,9 @@ class LabelApp(ctk.CTk):
         self._on_change_debounced()
 
     def _build_ui(self):
-        # Sidebar gets 15%, main area gets 85%
-        self.grid_columnconfigure(0, weight=15, uniform="root")
-        self.grid_columnconfigure(1, weight=85, uniform="root")
+        # Sidebar gets 20%, main area gets 80%
+        self.grid_columnconfigure(0, weight=20, uniform="root")
+        self.grid_columnconfigure(1, weight=80, uniform="root")
         self.grid_rowconfigure(0, weight=1)
 
         # 1. SIDEBAR
@@ -827,7 +827,7 @@ class LabelApp(ctk.CTk):
 
                 # Calculate height maintaining aspect ratio
                 aspect = img_obj.height / img_obj.width
-                img_w = 160
+                img_w = 130  # Reduced to prevent scaling overlaps
                 img_h = int(img_w * aspect)
                 self.long_logo_ctk = ctk.CTkImage(
                     light_image=img_obj, dark_image=img_obj, size=(img_w, img_h)
@@ -907,12 +907,10 @@ class LabelApp(ctk.CTk):
                         text=title + "", fg_color="#c9c9c9", text_color="black"
                     )
                 else:
-                    # Close other accordions? (Optional, let's keep them independent for now)
                     btn.configure(
                         text=title + "", fg_color="#2563EB", text_color="white"
                     )
                     content_frame.pack(fill="x", padx=(15, 0), pady=(0, 5))
-                    # Clear and populate
                     for w in content_frame.winfo_children():
                         w.destroy()
                     populate_func(content_frame)
@@ -928,7 +926,7 @@ class LabelApp(ctk.CTk):
                 corner_radius=6,
                 font=ctk.CTkFont(size=14),
             )
-            btn.pack(fill="x", padx=10)
+            btn.pack(fill="x", padx=20)
 
             def on_enter(e, b=btn):
                 if not content_frame.winfo_ismapped():
@@ -1013,7 +1011,6 @@ class LabelApp(ctk.CTk):
                 try:
                     with sqlite3.connect(DB_PATH) as conn:
                         c = conn.cursor()
-                        # First try to load from customer_bookmarks data
                         c.execute(
                             "SELECT data FROM customer_bookmarks WHERE customer_name=?",
                             (cust_name,),
@@ -1031,7 +1028,6 @@ class LabelApp(ctk.CTk):
                             self._build_form()
                             self._on_change_debounced()
                         else:
-                            # Fallback to history
                             c.execute(
                                 "SELECT id FROM label_history WHERE json_extract(data, '$.customer_name') = ? ORDER BY saved_at DESC LIMIT 1",
                                 (cust_name,),
@@ -1040,7 +1036,6 @@ class LabelApp(ctk.CTk):
                             if row:
                                 self._load_from_history(row[0])
                             else:
-                                # Just set the customer name if nothing else exists
                                 if "customer_name" in self.vars:
                                     self.vars["customer_name"].set(cust_name)
                                     self._build_form()
@@ -1340,10 +1335,10 @@ class LabelApp(ctk.CTk):
         main_area = ctk.CTkFrame(self, fg_color="#181818", corner_radius=0)
         main_area.grid(row=0, column=1, sticky="nsew")
         main_area.grid_rowconfigure(0, weight=1)
-        # Form panel gets 30%, preview pane gets 70%
-        main_area.grid_columnconfigure(0, weight=30, uniform="main")
+        # Form panel gets 35%, preview pane gets 65%
+        main_area.grid_columnconfigure(0, weight=35, uniform="main")
         main_area.grid_columnconfigure(1, weight=0)  # Separator
-        main_area.grid_columnconfigure(2, weight=70, uniform="main")
+        main_area.grid_columnconfigure(2, weight=65, uniform="main")
 
         # FORM PANE
         form_pane = ctk.CTkFrame(
@@ -1357,12 +1352,15 @@ class LabelApp(ctk.CTk):
         # Vertical Separator
         vertical_sep = ctk.CTkFrame(main_area, width=1, fg_color="#3a3a3a")
         vertical_sep.grid(row=0, column=1, sticky="ns", pady=10)
-        # TEMPLATE TABS (MOCKUP STYLE)
+
+        # TEMPLATE TABS (FIXED LAYOUT)
         top_tabs_frame = ctk.CTkFrame(form_pane, fg_color="transparent")
         top_tabs_frame.pack(fill="x", padx=10, pady=(20, 15))
+        # Use grid logic to lock tabs strictly into thirds of the container
+        top_tabs_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="tab")
 
         self.tab_buttons = []
-        tab_names = ["EU regulation", "US regulation", "Other"]
+        tab_names = ["EU Regulation", "US Regulation", "Other"]
 
         def _select_tab_ui(idx, name):
             for i, b in enumerate(self.tab_buttons):
@@ -1386,10 +1384,11 @@ class LabelApp(ctk.CTk):
                 hover_color="#444444",
                 border_width=0,
                 corner_radius=6,
-                height=36,
+                height=32,
+                font=ctk.CTkFont(size=11),
                 command=lambda x=i, t=t_name: _select_tab_ui(x, t),
             )
-            btn.pack(side="left", padx=5, expand=True, fill="x")
+            btn.grid(row=0, column=i, padx=2, sticky="ew")
             self.tab_buttons.append(btn)
 
         self.scroll_frame = ctk.CTkScrollableFrame(form_pane, fg_color="transparent")
@@ -1402,7 +1401,7 @@ class LabelApp(ctk.CTk):
         self.preview_pane.grid_propagate(False)
         self.preview_pane.grid_columnconfigure(0, weight=1)
         self.preview_pane.grid_rowconfigure(1, weight=1)
-        
+
         self.preview_pane.bind("<Configure>", self._on_preview_pane_resize)
 
         # Top Toolbar
@@ -1425,6 +1424,7 @@ class LabelApp(ctk.CTk):
             command=self._open_export_menu,
         )
         self.grid_btn.pack(side="right")
+
         # Filter Button
         filter_btn = ctk.CTkButton(
             top_toolbar,
@@ -1446,27 +1446,9 @@ class LabelApp(ctk.CTk):
         center_wrapper = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
         center_wrapper.grid(row=1, column=0, sticky="nsew")
 
-        # Preview Container
-        preview_container = ctk.CTkFrame(
-            center_wrapper,
-            fg_color="#222222",
-            border_width=1,
-            border_color="#3a3a3a",
-            corner_radius=12,
-        )
-        preview_container.pack(padx=20, pady=(10, 10))
-
-        self.preview_lbl = ctk.CTkLabel(
-            preview_container,
-            text="Rendering...",
-            font=("Segoe UI", 14),
-            text_color="#888888",
-        )
-        self.preview_lbl.pack(expand=True, fill="both", padx=20, pady=20)
-
-        # Actions Bar
+        # 1. Actions Bar (Pack FIRST at the bottom so it never gets pushed off)
         actions_frame = ctk.CTkFrame(center_wrapper, fg_color="transparent")
-        actions_frame.pack(fill="x", padx=20, pady=(0, 10))
+        actions_frame.pack(side="bottom", fill="x", padx=20, pady=(0, 10))
 
         btn_font = ctk.CTkFont(family="Segoe UI", size=13)
         ctk.CTkButton(
@@ -1533,12 +1515,12 @@ class LabelApp(ctk.CTk):
             border_width=1,
             border_color="#3a3a3a",
         )
-        pages_frame.pack(side="right")
+        pages_frame.pack(side="right", padx=(0, 10))
         pages_frame.pack_propagate(False)
-        pages_frame.configure(width=100)
+        pages_frame.configure(width=90)
         ctk.CTkLabel(
-            pages_frame, text="📄 Pages", font=btn_font, text_color="#E0E0E0"
-        ).pack(side="left", padx=(10, 5), pady=4)
+            pages_frame, text="Pgs:", font=btn_font, text_color="#888888"
+        ).pack(side="left", padx=(8, 2), pady=4)
 
         self.pages_lbl = ctk.CTkLabel(
             pages_frame,
@@ -1551,6 +1533,27 @@ class LabelApp(ctk.CTk):
             corner_radius=4,
         )
         self.pages_lbl.pack(side="right", padx=(0, 5), pady=5)
+
+        # 2. Preview Container (Pack SECOND to fill remaining top space)
+        preview_container = ctk.CTkFrame(
+            center_wrapper,
+            fg_color="#222222",
+            border_width=1,
+            border_color="#3a3a3a",
+            corner_radius=12,
+        )
+        preview_container.pack(
+            side="top", expand=True, fill="both", padx=20, pady=(10, 10)
+        )
+
+        self.preview_lbl = ctk.CTkLabel(
+            preview_container,
+            text="Rendering...",
+            font=("Segoe UI", 14),
+            text_color="#888888",
+        )
+        # Reduced padding here to allow the image more room and prevent internal cropping
+        self.preview_lbl.pack(expand=True, fill="both", padx=10, pady=10)
 
         # Separator
         separator = ctk.CTkFrame(self.preview_pane, height=1, fg_color="#3a3a3a")
@@ -1623,9 +1626,9 @@ class LabelApp(ctk.CTk):
             title_lbl = ctk.CTkLabel(
                 inner,
                 text=(
-                    str(folder_data["title"])
-                    if len(str(folder_data["title"])) > 15
-                    else folder_data["title"]
+                    str(folder_data["title"])[:12] + "..."
+                    if len(str(folder_data["title"])) > 12
+                    else str(folder_data["title"])
                 ),
                 font=ctk.CTkFont(size=13, weight="bold"),
                 text_color="#777777",
@@ -1638,9 +1641,9 @@ class LabelApp(ctk.CTk):
                 cust_lbl = ctk.CTkLabel(
                     inner,
                     text=(
-                        str(folder_data["customer"])
-                        if len(str(folder_data["customer"])) > 18
-                        else folder_data["customer"]
+                        str(folder_data["customer"])[:15] + "..."
+                        if len(str(folder_data["customer"])) > 15
+                        else str(folder_data["customer"])
                     ),
                     font=ctk.CTkFont(size=11),
                     text_color="#888888",
@@ -1652,9 +1655,9 @@ class LabelApp(ctk.CTk):
             date_lbl = ctk.CTkLabel(
                 inner,
                 text=(
-                    str(folder_data["date"])
-                    if len(str(folder_data["date"])) > 18
-                    else folder_data["date"]
+                    str(folder_data["date"])[:15] + "..."
+                    if len(str(folder_data["date"])) > 15
+                    else str(folder_data["date"])
                 ),
                 font=ctk.CTkFont(size=11),
                 text_color="#555555",
@@ -2292,33 +2295,38 @@ class LabelApp(ctk.CTk):
     def _resize_preview_image(self, event=None):
         if not hasattr(self, "_current_pil_img") or not self._current_pil_img:
             return
-            
-        scaling = self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
+
+        scaling = (
+            self._get_window_scaling() if hasattr(self, "_get_window_scaling") else 1.0
+        )
 
         # Ask the preview pane exactly how much physical space it has
         pane_w = self.preview_pane.winfo_width() / scaling
         pane_h = self.preview_pane.winfo_height() / scaling
-        
+
         # If the window is still launching and width is invalid, guess based on screen size
         if pane_w <= 10 or pane_h <= 10:
             app_w = (self.winfo_screenwidth() / scaling) * 0.85
             app_h = (self.winfo_screenheight() / scaling) * 0.85
             pane_w = app_w - 620
             pane_h = app_h - 100
-            
-        # Give some padding so the image doesn't touch the absolute edges
-        available_w = pane_w - 60
-        available_h = pane_h - 120 # Account for toolbar and padding
-        
-        if available_w < 200: available_w = 200
-        if available_h < 200: available_h = 200
+
+        # FIX: Increased padding limits to precisely prevent cropping
+        # Container has 20px padx (40 total) + Label has 10px padx (20 total) + Safety buffer
+        available_w = pane_w - 100
+        available_h = pane_h - 300
+
+        if available_w < 200:
+            available_w = 200
+        if available_h < 200:
+            available_h = 200
 
         img_ratio = self._current_pil_img.width / self._current_pil_img.height
-        
+
         max_w_for_h = available_h * img_ratio
-        
+
         constant_w = min(available_w, max_w_for_h)
-        
+
         if constant_w > 1200:
             constant_w = 1200
 
@@ -2326,7 +2334,9 @@ class LabelApp(ctk.CTk):
         new_h = int(constant_w / img_ratio)
 
         ctk_img = ctk.CTkImage(
-            light_image=self._current_pil_img, dark_image=self._current_pil_img, size=(new_w, new_h)
+            light_image=self._current_pil_img,
+            dark_image=self._current_pil_img,
+            size=(new_w, new_h),
         )
         self.preview_lbl.configure(image=ctk_img, text="")
         self.preview_lbl._image_ref = ctk_img
