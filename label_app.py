@@ -1335,8 +1335,8 @@ class LabelApp(ctk.CTk):
         main_area = ctk.CTkFrame(self, fg_color="#181818", corner_radius=0)
         main_area.grid(row=0, column=1, sticky="nsew")
         main_area.grid_rowconfigure(0, weight=1)
-        # Form panel gets 35%, preview pane gets 65%, form has min width of 220px
-        main_area.grid_columnconfigure(0, weight=35, uniform="main", minsize=220)
+        # Form panel gets 35%, preview pane gets 65%
+        main_area.grid_columnconfigure(0, weight=35, uniform="main")
         main_area.grid_columnconfigure(1, weight=0)  # Separator
         main_area.grid_columnconfigure(2, weight=65, uniform="main")
 
@@ -1360,7 +1360,8 @@ class LabelApp(ctk.CTk):
         top_tabs_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="tab")
 
         self.tab_buttons = []
-        tab_names = ["EU", "US", "Other"]
+        _full_tab_names  = ["EU Regulation", "US Regulation", "Other"]
+        _short_tab_names = ["EU", "US", "Other"]
 
         def _select_tab_ui(idx, name):
             for i, b in enumerate(self.tab_buttons):
@@ -1375,7 +1376,7 @@ class LabelApp(ctk.CTk):
                 self._selected_tpl.set(self._templates[0])
             self._on_template_change()
 
-        for i, t_name in enumerate(tab_names):
+        for i, t_name in enumerate(_full_tab_names):
             btn = ctk.CTkButton(
                 top_tabs_frame,
                 text=t_name,
@@ -1390,6 +1391,19 @@ class LabelApp(ctk.CTk):
             )
             btn.grid(row=0, column=i, padx=2, sticky="ew")
             self.tab_buttons.append(btn)
+
+        def _on_tabs_resize(event):
+            """Dynamically shorten tab text when the panel is too narrow."""
+            w = event.width
+            if w < 260:
+                labels = _short_tab_names
+            else:
+                labels = _full_tab_names
+            for btn, lbl in zip(self.tab_buttons, labels):
+                if btn.cget("text") != lbl:
+                    btn.configure(text=lbl)
+
+        top_tabs_frame.bind("<Configure>", _on_tabs_resize)
 
         self.scroll_frame = ctk.CTkScrollableFrame(form_pane, fg_color="transparent")
         self.scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
@@ -1507,7 +1521,32 @@ class LabelApp(ctk.CTk):
             corner_radius=6,
         ).pack(side="right", padx=10)
 
-        # (pages count stored internally, not shown in toolbar)
+        pages_frame = ctk.CTkFrame(
+            actions_frame,
+            fg_color="#333333",
+            corner_radius=6,
+            height=32,
+            border_width=1,
+            border_color="#3a3a3a",
+        )
+        pages_frame.pack(side="right", padx=(0, 10))
+        pages_frame.pack_propagate(False)
+        pages_frame.configure(width=90)
+        ctk.CTkLabel(
+            pages_frame, text="Pgs:", font=btn_font, text_color="#888888"
+        ).pack(side="left", padx=(8, 2), pady=4)
+
+        self.pages_lbl = ctk.CTkLabel(
+            pages_frame,
+            text="00",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#181818",
+            text_color="#E0E0E0",
+            width=25,
+            height=20,
+            corner_radius=4,
+        )
+        self.pages_lbl.pack(side="right", padx=(0, 5), pady=5)
 
         # 2. Preview Container (Pack SECOND to fill remaining top space)
         preview_container = ctk.CTkFrame(
@@ -1659,7 +1698,7 @@ class LabelApp(ctk.CTk):
                 main_col,
                 text=title,
                 text_color="#E0E0E0",
-                font=ctk.CTkFont(size=12, weight="bold"),
+                font=ctk.CTkFont(size=14, weight="bold"),
             ).pack(anchor="w", padx=10, pady=(15, 6))
 
         def add_field(label, var):
