@@ -318,6 +318,8 @@ def draw_qr_code(
             "drum_label_text",
             "custom_tare",
             "last_drum_label_text",
+            "customer_name",
+            "customer",
         }
         clean_values = {
             k: v
@@ -699,7 +701,7 @@ class DatePickerDialog(ctk.CTkToplevel):
                             size=12, weight="bold" if is_selected else "normal"
                         ),
                         fg_color="#2563EB" if is_selected else "#FFFFFF",
-                        text_color="#FFFFFF" if is_selected else "#E0E0E0",
+                        text_color="#FFFFFF" if is_selected else "#333333",
                         hover_color="#1D4ED8" if is_selected else "#E5E7EB",
                         command=lambda d=day: self._select_day(d),
                     )
@@ -1360,7 +1362,7 @@ class LabelApp(ctk.CTk):
         top_tabs_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="tab")
 
         self.tab_buttons = []
-        _full_tab_names  = ["EU Regulation", "US Regulation", "Other"]
+        _full_tab_names = ["EU Regulation", "US Regulation", "Other"]
         _short_tab_names = ["EU", "US", "Other"]
 
         def _select_tab_ui(idx, name):
@@ -1393,9 +1395,7 @@ class LabelApp(ctk.CTk):
             self.tab_buttons.append(btn)
 
         def _on_tabs_resize(event):
-            """Collapse tab text when the panel is too narrow.
-            Divide by scaling factor because event.width is in physical pixels
-            but our threshold is in logical pixels."""
+            """Collapse tab text when the panel is too narrow."""
             try:
                 scaling = ctk.ScalingTracker.get_window_scaling(self)
             except Exception:
@@ -1466,9 +1466,12 @@ class LabelApp(ctk.CTk):
         center_wrapper = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
         center_wrapper.grid(row=1, column=0, sticky="nsew")
 
-        # 1. Actions Bar (Pack FIRST at the bottom so it never gets pushed off)
+        # 1. Actions Bar (Pack FIRST at the bottom so it never gets pushed off, fixed with Grid)
         actions_frame = ctk.CTkFrame(center_wrapper, fg_color="transparent")
         actions_frame.pack(side="bottom", fill="x", padx=20, pady=(0, 10))
+
+        # Configure columns so the spacer (column 2) expands, pushing left/right buttons to the edges
+        actions_frame.grid_columnconfigure(2, weight=1)
 
         btn_font = ctk.CTkFont(family="Segoe UI", size=13)
 
@@ -1485,7 +1488,7 @@ class LabelApp(ctk.CTk):
             height=32,
             corner_radius=6,
         )
-        self._reset_btn.pack(side="left")
+        self._reset_btn.grid(row=0, column=0, sticky="w")
 
         self._save_btn = ctk.CTkButton(
             actions_frame,
@@ -1500,49 +1503,25 @@ class LabelApp(ctk.CTk):
             height=32,
             corner_radius=6,
         )
-        self._save_btn.pack(side="left", padx=10)
+        self._save_btn.grid(row=0, column=1, padx=(10, 0), sticky="w")
 
-        self._print_btn = ctk.CTkButton(
-            actions_frame,
-            text="🖨 Print",
-            command=self.print_pdf,
-            font=btn_font,
-            border_width=1,
-            border_color="#3a3a3a",
-            fg_color="#333333",
-            hover_color="#444444",
-            width=80,
-            height=32,
-            corner_radius=6,
+        # Invisible expanding spacer in the middle
+        ctk.CTkFrame(actions_frame, fg_color="transparent", height=0).grid(
+            row=0, column=2, sticky="ew"
         )
-        self._print_btn.pack(side="right")
-
-        self._savepdf_btn = ctk.CTkButton(
-            actions_frame,
-            text="📄 Save PDF",
-            command=self.save_pdf,
-            font=btn_font,
-            border_width=1,
-            border_color="#3a3a3a",
-            fg_color="#333333",
-            hover_color="#444444",
-            width=80,
-            height=32,
-            corner_radius=6,
-        )
-        self._savepdf_btn.pack(side="right", padx=10)
 
         pages_frame = ctk.CTkFrame(
             actions_frame,
             fg_color="#333333",
             corner_radius=6,
+            width=85,
             height=32,
             border_width=1,
             border_color="#3a3a3a",
         )
-        pages_frame.pack(side="right", padx=(0, 10))
+        pages_frame.grid(row=0, column=3, padx=(0, 10), sticky="e")
         pages_frame.pack_propagate(False)
-        pages_frame.configure(width=90)
+
         ctk.CTkLabel(
             pages_frame, text="Pgs:", font=btn_font, text_color="#888888"
         ).pack(side="left", padx=(8, 2), pady=4)
@@ -1559,18 +1538,48 @@ class LabelApp(ctk.CTk):
         )
         self.pages_lbl.pack(side="right", padx=(0, 5), pady=5)
 
-        # Responsive action buttons: collapse to icons when preview pane is narrow
+        self._savepdf_btn = ctk.CTkButton(
+            actions_frame,
+            text="📄 Save PDF",
+            command=self.save_pdf,
+            font=btn_font,
+            border_width=1,
+            border_color="#3a3a3a",
+            fg_color="#333333",
+            hover_color="#444444",
+            width=100,
+            height=32,
+            corner_radius=6,
+        )
+        self._savepdf_btn.grid(row=0, column=4, padx=(0, 10), sticky="e")
+
+        self._print_btn = ctk.CTkButton(
+            actions_frame,
+            text="🖨 Print",
+            command=self.print_pdf,
+            font=btn_font,
+            border_width=1,
+            border_color="#3a3a3a",
+            fg_color="#333333",
+            hover_color="#444444",
+            width=80,
+            height=32,
+            corner_radius=6,
+        )
+        self._print_btn.grid(row=0, column=5, sticky="e")
+
+        # Responsive action buttons: shrink heavily when preview pane is narrow
         _full_btn_labels = {
-            "_reset_btn":   "↻ Reset View",
-            "_save_btn":    "💾 Save",
+            "_reset_btn": "↻ Reset View",
+            "_save_btn": "💾 Save",
             "_savepdf_btn": "📄 Save PDF",
-            "_print_btn":   "🖨 Print",
+            "_print_btn": "🖨 Print",
         }
         _short_btn_labels = {
-            "_reset_btn":   "↻",
-            "_save_btn":    "💾",
+            "_reset_btn": "↻",
+            "_save_btn": "💾",
             "_savepdf_btn": "📄",
-            "_print_btn":   "🖨",
+            "_print_btn": "🖨",
         }
 
         def _on_actions_resize(event):
@@ -1579,14 +1588,19 @@ class LabelApp(ctk.CTk):
             except Exception:
                 scaling = 1.0
             logical_w = event.width / scaling
-            labels = _short_btn_labels if logical_w < 550 else _full_btn_labels
+            is_small = logical_w < 600
+            labels = _short_btn_labels if is_small else _full_btn_labels
+
             for attr, lbl in labels.items():
                 btn = getattr(self, attr, None)
                 if btn and btn.cget("text") != lbl:
-                    btn.configure(text=lbl)
+                    # Dynamically adjust the width so the buttons actually shrink to fit the window
+                    new_width = (
+                        40 if is_small else (80 if attr == "_print_btn" else 100)
+                    )
+                    btn.configure(text=lbl, width=new_width)
 
         actions_frame.bind("<Configure>", _on_actions_resize)
-
 
         # 2. Preview Container (Pack SECOND to fill remaining top space)
         preview_container = ctk.CTkFrame(
@@ -1736,10 +1750,10 @@ class LabelApp(ctk.CTk):
         def add_section(title):
             ctk.CTkLabel(
                 main_col,
-                text=title,
+                text=f" {title} ",
                 text_color="#E0E0E0",
-                font=ctk.CTkFont(size=14, weight="bold"),
-            ).pack(anchor="w", padx=10, pady=(15, 6))
+                font=ctk.CTkFont(size=13, weight="bold"),
+            ).pack(anchor="w", padx=5, pady=(15, 6))
 
         def add_field(label, var):
             entry = ctk.CTkEntry(
@@ -1777,6 +1791,29 @@ class LabelApp(ctk.CTk):
             )
             frame.pack(fill="x", padx=10, pady=6)
             frame.pack_propagate(False)
+
+            def open_picker():
+                def on_select(val):
+                    entry.delete(0, "end")
+                    entry.insert(0, val)
+                    var.set(val)
+
+                DatePickerDialog(
+                    self, entry.get() or var.get(), on_select, title=f"Select {label}"
+                )
+
+            # Fix: Pack fixed-width calendar button FIRST to prevent squishing
+            ctk.CTkButton(
+                frame,
+                text="📅",
+                width=30,
+                height=30,
+                fg_color="transparent",
+                hover_color="#3a3a3a",
+                text_color="#888888",
+                font=ctk.CTkFont(size=16),
+                command=open_picker,
+            ).pack(side="right", padx=5)
 
             entry = ctk.CTkEntry(
                 frame,
@@ -1820,28 +1857,6 @@ class LabelApp(ctk.CTk):
 
             entry.bind("<FocusOut>", on_focus_out)
 
-            def open_picker():
-                def on_select(val):
-                    entry.delete(0, "end")
-                    entry.insert(0, val)
-                    var.set(val)
-
-                DatePickerDialog(
-                    self, entry.get() or var.get(), on_select, title=f"Select {label}"
-                )
-
-            ctk.CTkButton(
-                frame,
-                text="📅",
-                width=30,
-                height=30,
-                fg_color="transparent",
-                hover_color="#3a3a3a",
-                text_color="#888888",
-                font=ctk.CTkFont(size=16),
-                command=open_picker,
-            ).pack(side="right", padx=5)
-
         # ---- RENDER TEMPLATE SPECIFIC FIELDS ----
         tpl_name = self._selected_tpl.get()
         config = TEMPLATE_CONFIGS.get(tpl_name, list(TEMPLATE_CONFIGS.values())[0])
@@ -1865,6 +1880,19 @@ class LabelApp(ctk.CTk):
                 cust_frame = ctk.CTkFrame(main_col, fg_color="transparent")
                 cust_frame.pack(fill="x", padx=10, pady=6)
 
+                self._cust_star_btn = ctk.CTkButton(
+                    cust_frame,
+                    text="☆",
+                    width=38,
+                    height=36,
+                    fg_color="#333333",
+                    hover_color="#444444",
+                    text_color="#AAAAAA",
+                    font=ctk.CTkFont(size=20),
+                    command=self._toggle_customer_bookmark,
+                )
+                self._cust_star_btn.pack(side="right", padx=(5, 0))
+
                 cust_entry = ctk.CTkEntry(
                     cust_frame,
                     placeholder_text="Customer Name",
@@ -1877,7 +1905,7 @@ class LabelApp(ctk.CTk):
                     text_color="#E0E0E0",
                     placeholder_text_color="#888888",
                 )
-                cust_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+                cust_entry.pack(side="left", fill="x", expand=True)
                 if self.vars["customer_name"].get():
                     cust_entry.insert(0, self.vars["customer_name"].get())
 
@@ -1889,18 +1917,6 @@ class LabelApp(ctk.CTk):
                 cust_entry.bind("<KeyRelease>", sync_cust)
                 cust_entry.bind("<FocusOut>", sync_cust)
 
-                self._cust_star_btn = ctk.CTkButton(
-                    cust_frame,
-                    text="☆",
-                    width=36,
-                    height=36,
-                    fg_color="#333333",
-                    hover_color="#444444",
-                    text_color="#AAAAAA",
-                    font=ctk.CTkFont(size=20),
-                    command=self._toggle_customer_bookmark,
-                )
-                self._cust_star_btn.pack(side="right")
                 # Wait for init to finish before calling _update_customer_star
                 self.after(100, self._update_customer_star)
 
@@ -2279,30 +2295,40 @@ class LabelApp(ctk.CTk):
                 drawing.height = label_h
                 drawing.transform = (scale, 0, 0, scale, 0, 0)
 
+                # Add explicit padding to the preview canvas so SVGs with overhanging paths aren't cut
+                pad_x = 10 * scale
+                pad_y = 15 * scale
+
                 pdf_bytes = io.BytesIO()
-                c = canvas.Canvas(pdf_bytes, pagesize=(label_w, label_h))
+                # Expand the page size
+                c = canvas.Canvas(
+                    pdf_bytes, pagesize=(label_w + pad_x * 2, label_h + pad_y * 2)
+                )
 
                 bg_color_hex = config.get("bg_color", "#FFFFFF")
                 c.setFillColor(HexColor(bg_color_hex))
-                c.rect(0, 0, label_w, label_h, fill=1, stroke=0)
+                c.rect(0, 0, label_w + pad_x * 2, label_h + pad_y * 2, fill=1, stroke=0)
 
-                renderPDF.draw(drawing, c, 0, 0)
+                # Draw with offsets
+                renderPDF.draw(drawing, c, pad_x, pad_y)
 
                 values = labels_values[0] if labels_values else {}
-                draw_native_labels(c, config, values, 0, 0, label_h, scale)
+                draw_native_labels(c, config, values, pad_x, pad_y, label_h, scale)
 
                 logo_path = os.path.join(LABELS_DIR, "BMI Logo.png")
                 has_logo = os.path.exists(logo_path)
                 logo_options = config.get("logo_options", {})
                 if has_logo and not logo_options.get("hide", False):
-                    logo_x = logo_options.get("x", 18) * scale
-                    logo_y = label_h - (logo_options.get("y_offset", 52) * scale)
+                    logo_x = pad_x + (logo_options.get("x", 18) * scale)
+                    logo_y = (
+                        pad_y + label_h - (logo_options.get("y_offset", 52) * scale)
+                    )
                     logo_w = logo_options.get("w", 45) * scale
                     logo_h = logo_options.get("h", 40) * scale
 
                     if logo_options.get("draw_bg", True):
                         c.setFillColorRGB(1, 1, 1)
-                        bg_x = logo_options.get("bg_x", 10) * scale
+                        bg_x = pad_x + (logo_options.get("bg_x", 10) * scale)
                         bg_y = logo_y - (logo_options.get("bg_y_offset", 2) * scale)
                         bg_w = logo_options.get("bg_w", 48) * scale
                         bg_h = logo_options.get("bg_h", 45) * scale
@@ -2318,7 +2344,14 @@ class LabelApp(ctk.CTk):
                     )
 
                 draw_qr_code(
-                    c, values, label_w, label_h, scale, config.get("qr_options", {})
+                    c,
+                    values,
+                    label_w,
+                    label_h,
+                    scale,
+                    config.get("qr_options", {}),
+                    x_offset=pad_x,
+                    y_offset=pad_y,
                 )
 
                 c.save()
@@ -4008,7 +4041,7 @@ class LabelApp(ctk.CTk):
                         if cust:
                             details.append(f"🏢 {cust}")
                         if batch:
-                            details.append(f"🏷️ {batch}")
+                            details.append(f"🏷 {batch}")
 
                         details_str = "  |  ".join(details)
                         if not details_str:

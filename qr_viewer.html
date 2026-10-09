@@ -463,7 +463,7 @@
             });
 
             // Render any extra fields not in order
-            const unwanted = ['net_wt', 'gross_wt', 'drum_capacity', 'drum', 'drum_label_text', 'custom_tare', 'last_drum_label_text', 'coa_url', 'spec_url'];
+            const unwanted = ['net_wt', 'gross_wt', 'drum_capacity', 'drum', 'drum_label_text', 'custom_tare', 'last_drum_label_text', 'coa_url', 'spec_url', 'customer_name', 'customer'];
             Object.keys(values).forEach(key => {
                 if (!order.includes(key) && !unwanted.includes(key) && values[key] && values[key].trim() !== '') {
                     addField(container, key.replace(/_/g, ' '), values[key]);
