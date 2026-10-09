@@ -1925,8 +1925,16 @@ class LabelApp(ctk.CTk):
 
                 if var_name == "product":
                     product_names = self._get_product_names()
-                    combo_values = ["+ Create New Product..."] + product_names
                     current_product = self.vars["product"].get().strip()
+                    if (
+                        current_product
+                        and current_product not in product_names
+                        and not current_product.startswith("+ Create")
+                    ):
+                        product_names.append(current_product)
+                        product_names.sort(key=lambda x: x.lower())
+
+                    combo_values = ["+ Create New Product..."] + product_names
 
                     self._product_combo = ctk.CTkComboBox(
                         main_col,
@@ -2656,7 +2664,7 @@ class LabelApp(ctk.CTk):
         product = data.get("product", "").strip()
         batch = data.get("batch", "").strip()
 
-        if len(product) < 3 or product.startswith("+ Create") or len(batch) < 2:
+        if len(product) < 2 or product.startswith("+ Create"):
             return
 
         saved_at = datetime.now().strftime("%d-%b-%Y %H:%M")
@@ -2666,11 +2674,11 @@ class LabelApp(ctk.CTk):
             conn = sqlite3.connect(DB_PATH)
             conn.execute(
                 """
-                INSERT INTO label_history (product, month, saved_at, data)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(product, month) DO UPDATE SET saved_at=excluded.saved_at, data=excluded.data
+                INSERT INTO label_history (product, month, saved_at, data, batch)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(product, batch) DO UPDATE SET saved_at=excluded.saved_at, data=excluded.data, month=excluded.month
             """,
-                (product, current_month, saved_at, json.dumps(data)),
+                (product, current_month, saved_at, json.dumps(data), batch),
             )
             conn.commit()
             conn.close()
@@ -2734,7 +2742,7 @@ class LabelApp(ctk.CTk):
         try:
             conn = sqlite3.connect(DB_PATH)
             row = conn.execute(
-                "SELECT id FROM label_history WHERE product=?", (new_name,)
+                "SELECT id FROM label_history WHERE lower(product)=lower(?)", (new_name,)
             ).fetchone()
             conn.close()
             if row:
@@ -2772,9 +2780,27 @@ class LabelApp(ctk.CTk):
         self.vars["last_gross_wt"].set("")
         self.vars["last_drum_label_text"].set("#Drum:")
 
-        self._build_form()
+        # Immediately save new product to DB so it persists and appears in product list & dropdown without waiting for manual save
+        data = {k: v.get() for k, v in self.vars.items()}
+        data["template"] = self._selected_tpl.get()
+        saved_at = datetime.now().strftime("%d-%b-%Y %H:%M")
+        current_month = datetime.now().strftime("%Y-%m")
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute(
+                """
+                INSERT INTO label_history (product, month, saved_at, data, batch)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(product, batch) DO UPDATE SET saved_at=excluded.saved_at, data=excluded.data, month=excluded.month
+                """,
+                (new_name, current_month, saved_at, json.dumps(data), ""),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Error saving new product to DB: {e}")
 
-        self._save_to_history()
+        self._build_form()
         self._refresh_product_dropdown()
         self._refresh_history_panel()
         self._on_change_debounced()
@@ -2986,19 +3012,22 @@ class LabelApp(ctk.CTk):
         try:
             conn = sqlite3.connect(DB_PATH)
             rows = conn.execute(
-                "SELECT DISTINCT product FROM label_history ORDER BY product"
+                "SELECT DISTINCT product FROM label_history WHERE product != '' AND product NOT LIKE '+ Create%' ORDER BY product COLLATE NOCASE"
             ).fetchall()
             conn.close()
-            return [r[0] for r in rows]
+            return [r[0] for r in rows if r[0] and r[0].strip()]
         except Exception:
             return []
 
     def _refresh_product_dropdown(self):
         if hasattr(self, "_product_combo"):
             names = self._get_product_names()
+            curr = self.vars["product"].get().strip()
+            if curr and curr not in names and not curr.startswith("+ Create"):
+                names.append(curr)
+                names.sort(key=lambda x: x.lower())
             values = ["+ Create New Product..."] + names
             self._product_combo.configure(values=values)
-            curr = self.vars["product"].get().strip()
             if curr in names:
                 self._product_combo.set(curr)
             elif names:
