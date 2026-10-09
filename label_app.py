@@ -1628,8 +1628,9 @@ class LabelApp(ctk.CTk):
         separator.grid(row=3, column=0, sticky="ew", padx=20, pady=10)
 
         # Folders
-        folders_frame = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
-        folders_frame.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
+        self.folders_frame = ctk.CTkFrame(self.preview_pane, fg_color="transparent")
+        self.folders_frame.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
+        self.folders_frame.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
 
         # Generate a solid folder icon using PIL
         if not hasattr(self, "_folder_img"):
@@ -1644,6 +1645,15 @@ class LabelApp(ctk.CTk):
             self._folder_img = ctk.CTkImage(
                 light_image=img, dark_image=img, size=(95, 75)
             )
+
+        self._refresh_recent_folders()
+
+    def _refresh_recent_folders(self):
+        if not hasattr(self, "folders_frame"):
+            return
+
+        for w in self.folders_frame.winfo_children():
+            w.destroy()
 
         recent_labels = []
         try:
@@ -1670,10 +1680,9 @@ class LabelApp(ctk.CTk):
             recent_labels.append({"title": "No Label", "date": "-"})
 
         for folder_data in recent_labels:
-            f_container = ctk.CTkFrame(folders_frame, fg_color="transparent")
+            f_container = ctk.CTkFrame(self.folders_frame, fg_color="transparent")
             f_container.pack(side="left", expand=True, fill="both")
 
-            # Inner container to allow left-alignment of contents while remaining centered in the column
             inner = ctk.CTkFrame(f_container, fg_color="transparent")
             inner.pack(anchor="center")
 
@@ -1691,6 +1700,7 @@ class LabelApp(ctk.CTk):
             folder_icon.pack(anchor="w")
             folder_icon.bind("<Button-1>", cmd)
 
+            is_real = "id" in folder_data
             title_lbl = ctk.CTkLabel(
                 inner,
                 text=(
@@ -1699,8 +1709,8 @@ class LabelApp(ctk.CTk):
                     else str(folder_data["title"])
                 ),
                 font=ctk.CTkFont(size=13, weight="bold"),
-                text_color="#777777",
-                cursor="hand2" if "id" in folder_data else "arrow",
+                text_color="#E0E0E0" if is_real else "#777777",
+                cursor="hand2" if is_real else "arrow",
             )
             title_lbl.pack(anchor="w", padx=10, pady=(2, 0))
             title_lbl.bind("<Button-1>", cmd)
@@ -1714,8 +1724,8 @@ class LabelApp(ctk.CTk):
                         else str(folder_data["customer"])
                     ),
                     font=ctk.CTkFont(size=11),
-                    text_color="#888888",
-                    cursor="hand2" if "id" in folder_data else "arrow",
+                    text_color="#AAAAAA",
+                    cursor="hand2" if is_real else "arrow",
                 )
                 cust_lbl.pack(anchor="w", padx=10)
                 cust_lbl.bind("<Button-1>", cmd)
@@ -1728,8 +1738,8 @@ class LabelApp(ctk.CTk):
                     else str(folder_data["date"])
                 ),
                 font=ctk.CTkFont(size=11),
-                text_color="#555555",
-                cursor="hand2" if "id" in folder_data else "arrow",
+                text_color="#888888" if is_real else "#555555",
+                cursor="hand2" if is_real else "arrow",
             )
             date_lbl.pack(anchor="w", padx=10)
             date_lbl.bind("<Button-1>", cmd)
@@ -2654,6 +2664,7 @@ class LabelApp(ctk.CTk):
             conn.close()
             self._refresh_history_panel()
             self._refresh_product_dropdown()
+            self._refresh_recent_folders()
             messagebox.showinfo("Saved", f"Successfully saved '{product}' to database!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
@@ -2684,6 +2695,7 @@ class LabelApp(ctk.CTk):
             conn.close()
             self._refresh_history_panel()
             self._refresh_product_dropdown()
+            self._refresh_recent_folders()
         except Exception as e:
             print(f"History save error: {e}")
 
@@ -2803,6 +2815,7 @@ class LabelApp(ctk.CTk):
         self._build_form()
         self._refresh_product_dropdown()
         self._refresh_history_panel()
+        self._refresh_recent_folders()
         self._on_change_debounced()
 
     def _rename_product(self):
@@ -2839,6 +2852,7 @@ class LabelApp(ctk.CTk):
             self._save_to_history()
             self._refresh_product_dropdown()
             self._refresh_history_panel()
+            self._refresh_recent_folders()
         except Exception as e:
             messagebox.showerror("Error", f"Could not rename product:\n{e}")
 
@@ -2990,6 +3004,7 @@ class LabelApp(ctk.CTk):
             conn.commit()
             conn.close()
             self._refresh_history_panel()
+            self._refresh_recent_folders()
 
             if deleted_prod and self.vars["product"].get().strip() == deleted_prod:
                 remaining = self._get_product_names()

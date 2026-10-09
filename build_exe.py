@@ -17,6 +17,13 @@ def build():
         except Exception:
             pass
 
+    # Backup existing database in dist if it exists
+    dist_db = os.path.join(base_dir, "dist", "label_app", "label_history.db")
+    backup_db = os.path.join(base_dir, "dist_label_history_backup.db")
+    if os.path.exists(dist_db):
+        import shutil
+        shutil.copy2(dist_db, backup_db)
+
     # Run PyInstaller
     print("Running PyInstaller...")
     try:
@@ -30,6 +37,20 @@ def build():
             if os.path.exists(dst_labels):
                 shutil.rmtree(dst_labels)
             shutil.copytree(src_labels, dst_labels)
+
+        # Restore / copy database
+        target_db = os.path.join(base_dir, "dist", "label_app", "label_history.db")
+        if os.path.exists(backup_db):
+            shutil.copy2(backup_db, target_db)
+            os.remove(backup_db)
+        elif os.path.exists(os.path.join(base_dir, "label_history.db")):
+            shutil.copy2(os.path.join(base_dir, "label_history.db"), target_db)
+
+        # Copy config.json
+        src_cfg = os.path.join(base_dir, "config.json")
+        dst_cfg = os.path.join(base_dir, "dist", "label_app", "config.json")
+        if os.path.exists(src_cfg):
+            shutil.copy2(src_cfg, dst_cfg)
             
         print("\nSUCCESS! The executable has been built in the 'dist' folder.")
         print(f"Path: {os.path.join(base_dir, 'dist', 'label_app', 'label_app.exe')}")
